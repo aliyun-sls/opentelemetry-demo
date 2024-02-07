@@ -179,6 +179,24 @@ data:
         endpoint: http://opentelemetry-demo-prometheus-server:9090/api/v1/otlp
         tls:
           insecure: true
+      alibabacloud_logservice/logs:
+        endpoint: "cn-beijing-intranet.log.aliyuncs.com"
+        project: "{sls-project}"
+        logstore: "{sls-instance-id}-logs"
+        access_key_id: "{sls-access-key}"
+        access_key_secret: "{sls-access-secret}"
+      alibabacloud_logservice/metrics:
+        endpoint: "cn-beijing-intranet.log.aliyuncs.com"
+        project: "{sls-project}"
+        logstore: "{sls-instance-id}-metrics"
+        access_key_id: "{sls-access-key}"
+        access_key_secret: "{sls-access-secret}"
+      alibabacloud_logservice/traces:
+        endpoint: "cn-beijing-intranet.log.aliyuncs.com"
+        project: "{sls-project}"
+        logstore: "{sls-instance-id}-traces"
+        access_key_id: "{sls-access-key}"
+        access_key_secret: "{sls-access-secret}"
     extensions:
       health_check: {}
     processors:
@@ -263,6 +281,7 @@ data:
         logs:
           exporters:
           - debug
+          - alibabacloud_logservice/logs
           processors:
           - k8sattributes
           - memory_limiter
@@ -273,6 +292,7 @@ data:
           exporters:
           - otlphttp/prometheus
           - debug
+          - alibabacloud_logservice/metrics
           processors:
           - k8sattributes
           - memory_limiter
@@ -288,6 +308,7 @@ data:
           - otlp
           - debug
           - spanmetrics
+          - alibabacloud_logservice/traces
           processors:
           - k8sattributes
           - memory_limiter
