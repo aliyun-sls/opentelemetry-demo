@@ -24,6 +24,8 @@ const {
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = '',
   OTEL_SERVICE_NAME = 'frontend',
   PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = '',
+  ALIBABA_CLOUD_RUM_PID = '',
+  ALIBABA_CLOUD_RUM_ENDPOINT = ''
 } = process.env;
 
 const nextConfig = {
@@ -56,7 +58,13 @@ const nextConfig = {
     NEXT_PUBLIC_PLATFORM: ENV_PLATFORM,
     NEXT_PUBLIC_OTEL_SERVICE_NAME: OTEL_SERVICE_NAME,
     NEXT_PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: PUBLIC_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+    ALIBABA_CLOUD_RUM_PID,
+    ALIBABA_CLOUD_RUM_ENDPOINT
   },
+  images: {
+    loader: "custom",
+    loaderFile: "./utils/imageLoader.js"
+  }
 };
 
 module.exports = nextConfig;
