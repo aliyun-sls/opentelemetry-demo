@@ -4,6 +4,7 @@
 
 # All documents to be used in spell check.
 ALL_DOCS := $(shell find . -type f -name '*.md' -not -path './.github/*' -not -path '*/node_modules/*' -not -path '*/_build/*' -not -path '*/deps/*' -not -path */Pods/* -not -path */.expo/* | sort)
+ALL_SERVICES = jaeger grafana otel-collector prometheus opensearch accounting ad cart checkout currency email fraud-detection frontend frontend-proxy image-provider load-generator payment product-catalog quote recommendation shipping flagd flagd-ui kafka valkey-cart
 PWD := $(shell pwd)
 
 TOOLS_DIR := ./internal/tools
@@ -98,7 +99,8 @@ build:
 
 .PHONY: build-and-push
 build-and-push:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) --push
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(ALL_SERVICES)
+    $(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(ALL_SERVICES)
 
 # Create multiplatform builder for buildx
 .PHONY: create-multiplatform-builder
