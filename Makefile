@@ -118,10 +118,11 @@ build-and-push:
 			continue; \
 		fi; \
 		version=$$(echo $$src | cut -d':' -f2); \
-		echo "Processing $$src -> $$dst (version: $$version)"; \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		echo "Processing $$src -> $$dst (version: $$version -> $$tag_version)"; \
 		if docker pull $$src && \
-		   docker tag $$src $$IMAGE_NAME:$$dst-$$version && \
-		   docker push $$IMAGE_NAME:$$dst-$$version; then \
+		   docker tag $$src $$IMAGE_NAME:$$tag_version-$$dst && \
+		   docker push $$IMAGE_NAME:$$tag_version-$$dst; then \
 			echo "Successfully processed $$dst"; \
 		else \
 			echo "Failed to process $$dst" >&2; \
@@ -181,9 +182,11 @@ endif
 		exit 1; \
 	fi; \
 	echo "Processing $$src -> $(service)"; \
+	version=$$(echo $$src | cut -d':' -f2); \
+	case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
 	if docker pull $$src && \
-	   docker tag $$src $$IMAGE_NAME:$(service)-$$(echo $$src | cut -d':' -f2) && \
-	   docker push $$IMAGE_NAME:$(service)-$$(echo $$src | cut -d':' -f2); then \
+	   docker tag $$src $$IMAGE_NAME:$$tag_version-$(service) && \
+	   docker push $$IMAGE_NAME:$$tag_version-$(service); then \
 		echo "Successfully processed $(service)"; \
 	else \
 		echo "Failed to process $(service)" >&2; \
