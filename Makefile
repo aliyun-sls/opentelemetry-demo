@@ -109,26 +109,126 @@ build-and-push:
 	[ -f .env.override ] && . ./.env.override; \
 	set +a; \
 	failed_services=""; \
-	for img_pair in "$$JAEGERTRACING_IMAGE:jaeger" "$$GRAFANA_IMAGE:grafana" "$$COLLECTOR_CONTRIB_IMAGE:otel-collector" "$$PROMETHEUS_IMAGE:prometheus" "$$OPENSEARCH_IMAGE:opensearch" "$$FLAGD_IMAGE:flagd" "$$VALKEY_IMAGE:valkey-cart"; do \
-		src=$${img_pair%:*}; \
-		dst=$${img_pair#*:}; \
-		if [ -z "$$src" ]; then \
-			echo "ERROR: Missing environment variable for $$dst"; \
-			failed_services="$$failed_services $$dst"; \
-			continue; \
-		fi; \
-		version=$$(echo $$src | cut -d':' -f2); \
+	\
+	echo "Processing Jaeger..."; \
+	if [ -n "$$JAEGERTRACING_IMAGE" ]; then \
+		version=$$(echo $$JAEGERTRACING_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		echo "Processing $$src -> $$dst (version: $$version -> $$tag_version)"; \
-		if docker pull $$src && \
-		   docker tag $$src $$IMAGE_NAME:$$tag_version-$$dst && \
-		   docker push $$IMAGE_NAME:$$tag_version-$$dst; then \
-			echo "Successfully processed $$dst"; \
+		if docker pull $$JAEGERTRACING_IMAGE && \
+		   docker tag $$JAEGERTRACING_IMAGE $$IMAGE_NAME:$$tag_version-jaeger && \
+		   docker push $$IMAGE_NAME:$$tag_version-jaeger; then \
+			echo "Successfully processed jaeger"; \
 		else \
-			echo "Failed to process $$dst" >&2; \
-			failed_services="$$failed_services $$dst"; \
+			echo "Failed to process jaeger" >&2; \
+			failed_services="$$failed_services jaeger"; \
 		fi; \
-	done; \
+	else \
+		echo "ERROR: JAEGERTRACING_IMAGE is not set"; \
+		failed_services="$$failed_services jaeger"; \
+	fi; \
+	\
+	echo "Processing Grafana..."; \
+	if [ -n "$$GRAFANA_IMAGE" ]; then \
+		version=$$(echo $$GRAFANA_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$GRAFANA_IMAGE && \
+		   docker tag $$GRAFANA_IMAGE $$IMAGE_NAME:$$tag_version-grafana && \
+		   docker push $$IMAGE_NAME:$$tag_version-grafana; then \
+			echo "Successfully processed grafana"; \
+		else \
+			echo "Failed to process grafana" >&2; \
+			failed_services="$$failed_services grafana"; \
+		fi; \
+	else \
+		echo "ERROR: GRAFANA_IMAGE is not set"; \
+		failed_services="$$failed_services grafana"; \
+	fi; \
+	\
+	echo "Processing OpenTelemetry Collector..."; \
+	if [ -n "$$COLLECTOR_CONTRIB_IMAGE" ]; then \
+		version=$$(echo $$COLLECTOR_CONTRIB_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$COLLECTOR_CONTRIB_IMAGE && \
+		   docker tag $$COLLECTOR_CONTRIB_IMAGE $$IMAGE_NAME:$$tag_version-otel-collector && \
+		   docker push $$IMAGE_NAME:$$tag_version-otel-collector; then \
+			echo "Successfully processed otel-collector"; \
+		else \
+			echo "Failed to process otel-collector" >&2; \
+			failed_services="$$failed_services otel-collector"; \
+		fi; \
+	else \
+		echo "ERROR: COLLECTOR_CONTRIB_IMAGE is not set"; \
+		failed_services="$$failed_services otel-collector"; \
+	fi; \
+	\
+	echo "Processing Prometheus..."; \
+	if [ -n "$$PROMETHEUS_IMAGE" ]; then \
+		version=$$(echo $$PROMETHEUS_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$PROMETHEUS_IMAGE && \
+		   docker tag $$PROMETHEUS_IMAGE $$IMAGE_NAME:$$tag_version-prometheus && \
+		   docker push $$IMAGE_NAME:$$tag_version-prometheus; then \
+			echo "Successfully processed prometheus"; \
+		else \
+			echo "Failed to process prometheus" >&2; \
+			failed_services="$$failed_services prometheus"; \
+		fi; \
+	else \
+		echo "ERROR: PROMETHEUS_IMAGE is not set"; \
+		failed_services="$$failed_services prometheus"; \
+	fi; \
+	\
+	echo "Processing OpenSearch..."; \
+	if [ -n "$$OPENSEARCH_IMAGE" ]; then \
+		version=$$(echo $$OPENSEARCH_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$OPENSEARCH_IMAGE && \
+		   docker tag $$OPENSEARCH_IMAGE $$IMAGE_NAME:$$tag_version-opensearch && \
+		   docker push $$IMAGE_NAME:$$tag_version-opensearch; then \
+			echo "Successfully processed opensearch"; \
+		else \
+			echo "Failed to process opensearch" >&2; \
+			failed_services="$$failed_services opensearch"; \
+		fi; \
+	else \
+		echo "ERROR: OPENSEARCH_IMAGE is not set"; \
+		failed_services="$$failed_services opensearch"; \
+	fi; \
+	\
+	echo "Processing Flagd..."; \
+	if [ -n "$$FLAGD_IMAGE" ]; then \
+		version=$$(echo $$FLAGD_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$FLAGD_IMAGE && \
+		   docker tag $$FLAGD_IMAGE $$IMAGE_NAME:$$tag_version-flagd && \
+		   docker push $$IMAGE_NAME:$$tag_version-flagd; then \
+			echo "Successfully processed flagd"; \
+		else \
+			echo "Failed to process flagd" >&2; \
+			failed_services="$$failed_services flagd"; \
+		fi; \
+	else \
+		echo "ERROR: FLAGD_IMAGE is not set"; \
+		failed_services="$$failed_services flagd"; \
+	fi; \
+	\
+	echo "Processing Valkey..."; \
+	if [ -n "$$VALKEY_IMAGE" ]; then \
+		version=$$(echo $$VALKEY_IMAGE | cut -d':' -f2); \
+		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
+		if docker pull $$VALKEY_IMAGE && \
+		   docker tag $$VALKEY_IMAGE $$IMAGE_NAME:$$tag_version-valkey-cart && \
+		   docker push $$IMAGE_NAME:$$tag_version-valkey-cart; then \
+			echo "Successfully processed valkey-cart"; \
+		else \
+			echo "Failed to process valkey-cart" >&2; \
+			failed_services="$$failed_services valkey-cart"; \
+		fi; \
+	else \
+		echo "ERROR: VALKEY_IMAGE is not set"; \
+		failed_services="$$failed_services valkey-cart"; \
+	fi; \
+	\
 	if [ -n "$$failed_services" ]; then \
 		echo "The following services failed to process:$$failed_services" >&2; \
 		echo "You can retry these services individually using:"; \
