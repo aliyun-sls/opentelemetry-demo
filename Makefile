@@ -104,15 +104,24 @@ build-and-push:
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(CUSTOM_SERVICES)
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(CUSTOM_SERVICES)
 	@echo "Pulling and pushing third-party services with original versions..."
-	@failed_services="" ; \
-	for img in "$(JAEGERTRACING_IMAGE):jaeger" "$(GRAFANA_IMAGE):grafana" "$(COLLECTOR_CONTRIB_IMAGE):otel-collector" "$(PROMETHEUS_IMAGE):prometheus" "$(OPENSEARCH_IMAGE):opensearch" "$(FLAGD_IMAGE):flagd" "$(VALKEY_IMAGE):valkey-cart"; do \
-		src=$${img%:*}; \
-		dst=$${img#*:}; \
+	@set -a; \
+	[ -f .env ] && . ./.env; \
+	[ -f .env.override ] && . ./.env.override; \
+	set +a; \
+	failed_services=""; \
+	for img_pair in "$$JAEGERTRACING_IMAGE:jaeger" "$$GRAFANA_IMAGE:grafana" "$$COLLECTOR_CONTRIB_IMAGE:otel-collector" "$$PROMETHEUS_IMAGE:prometheus" "$$OPENSEARCH_IMAGE:opensearch" "$$FLAGD_IMAGE:flagd" "$$VALKEY_IMAGE:valkey-cart"; do \
+		src=$${img_pair%:*}; \
+		dst=$${img_pair#*:}; \
+		if [ -z "$$src" ]; then \
+			echo "ERROR: Missing environment variable for $$dst"; \
+			failed_services="$$failed_services $$dst"; \
+			continue; \
+		fi; \
 		version=$$(echo $$src | cut -d':' -f2); \
 		echo "Processing $$src -> $$dst (version: $$version)"; \
 		if docker pull $$src && \
-		   docker tag $$src ${IMAGE_NAME}/$$dst:$$version && \
-		   docker push ${IMAGE_NAME}/$$dst:$$version; then \
+		   docker tag $$src $$IMAGE_NAME/$$dst:$$version && \
+		   docker push $$IMAGE_NAME/$$dst:$$version; then \
 			echo "Successfully processed $$dst"; \
 		else \
 			echo "Failed to process $$dst" >&2; \
@@ -135,27 +144,31 @@ ifndef service
 	@echo "Available services: jaeger grafana otel-collector prometheus opensearch flagd valkey-cart"
 	exit 1
 endif
-	@case "$(service)" in \
+	@set -a; \
+	[ -f .env ] && . ./.env; \
+	[ -f .env.override ] && . ./.env.override; \
+	set +a; \
+	case "$(service)" in \
 		jaeger) \
-			src="$(JAEGERTRACING_IMAGE)"; \
+			src="$$JAEGERTRACING_IMAGE"; \
 			;; \
 		grafana) \
-			src="$(GRAFANA_IMAGE)"; \
+			src="$$GRAFANA_IMAGE"; \
 			;; \
 		otel-collector) \
-			src="$(COLLECTOR_CONTRIB_IMAGE)"; \
+			src="$$COLLECTOR_CONTRIB_IMAGE"; \
 			;; \
 		prometheus) \
-			src="$(PROMETHEUS_IMAGE)"; \
+			src="$$PROMETHEUS_IMAGE"; \
 			;; \
 		opensearch) \
-			src="$(OPENSEARCH_IMAGE)"; \
+			src="$$OPENSEARCH_IMAGE"; \
 			;; \
 		flagd) \
-			src="$(FLAGD_IMAGE)"; \
+			src="$$FLAGD_IMAGE"; \
 			;; \
 		valkey-cart) \
-			src="$(VALKEY_IMAGE)"; \
+			src="$$VALKEY_IMAGE"; \
 			;; \
 		*) \
 			echo "Unknown service: $(service)"; \
@@ -163,10 +176,14 @@ endif
 			exit 1; \
 			;; \
 	esac; \
+	if [ -z "$$src" ]; then \
+		echo "ERROR: Environment variable for $(service) is not set"; \
+		exit 1; \
+	fi; \
 	echo "Processing $$src -> $(service)"; \
 	if docker pull $$src && \
-	   docker tag $$src ${IMAGE_NAME}/$(service):$$(echo $$src | cut -d':' -f2) && \
-	   docker push ${IMAGE_NAME}/$(service):$$(echo $$src | cut -d':' -f2); then \
+	   docker tag $$src $$IMAGE_NAME/$(service):$$(echo $$src | cut -d':' -f2) && \
+	   docker push $$IMAGE_NAME/$(service):$$(echo $$src | cut -d':' -f2); then \
 		echo "Successfully processed $(service)"; \
 	else \
 		echo "Failed to process $(service)" >&2; \
