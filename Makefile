@@ -120,8 +120,8 @@ build-and-push:
 		version=$$(echo $$src | cut -d':' -f2); \
 		echo "Processing $$src -> $$dst (version: $$version)"; \
 		if docker pull $$src && \
-		   docker tag $$src $$IMAGE_NAME/$$dst:$$version && \
-		   docker push $$IMAGE_NAME/$$dst:$$version; then \
+		   docker tag $$src $$IMAGE_NAME:$$dst-$$version && \
+		   docker push $$IMAGE_NAME:$$dst-$$version; then \
 			echo "Successfully processed $$dst"; \
 		else \
 			echo "Failed to process $$dst" >&2; \
@@ -182,8 +182,8 @@ endif
 	fi; \
 	echo "Processing $$src -> $(service)"; \
 	if docker pull $$src && \
-	   docker tag $$src $$IMAGE_NAME/$(service):$$(echo $$src | cut -d':' -f2) && \
-	   docker push $$IMAGE_NAME/$(service):$$(echo $$src | cut -d':' -f2); then \
+	   docker tag $$src $$IMAGE_NAME:$(service)-$$(echo $$src | cut -d':' -f2) && \
+	   docker push $$IMAGE_NAME:$(service)-$$(echo $$src | cut -d':' -f2); then \
 		echo "Successfully processed $(service)"; \
 	else \
 		echo "Failed to process $(service)" >&2; \
