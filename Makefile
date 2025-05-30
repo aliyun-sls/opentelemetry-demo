@@ -100,7 +100,7 @@ build:
 .PHONY: build-and-push
 build-and-push:
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(ALL_SERVICES)
-    $(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(ALL_SERVICES)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(ALL_SERVICES)
 
 # Create multiplatform builder for buildx
 .PHONY: create-multiplatform-builder
