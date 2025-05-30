@@ -4,7 +4,8 @@
 
 # All documents to be used in spell check.
 ALL_DOCS := $(shell find . -type f -name '*.md' -not -path './.github/*' -not -path '*/node_modules/*' -not -path '*/_build/*' -not -path '*/deps/*' -not -path */Pods/* -not -path */.expo/* | sort)
-ALL_SERVICES = jaeger grafana otel-collector prometheus opensearch accounting ad cart checkout currency email fraud-detection frontend frontend-proxy image-provider load-generator payment product-catalog quote recommendation shipping flagd flagd-ui kafka valkey-cart
+CUSTOM_SERVICES = accounting ad cart checkout currency email fraud-detection frontend frontend-proxy image-provider load-generator payment product-catalog quote recommendation shipping flagd-ui kafka
+THIRD_PARTY_SERVICES = jaeger grafana otel-collector prometheus opensearch flagd valkey-cart
 PWD := $(shell pwd)
 
 TOOLS_DIR := ./internal/tools
@@ -99,8 +100,78 @@ build:
 
 .PHONY: build-and-push
 build-and-push:
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(ALL_SERVICES)
-	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(ALL_SERVICES)
+	@echo "Building and pushing custom services with custom version..."
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) build $(DOCKER_COMPOSE_BUILD_ARGS) $(CUSTOM_SERVICES)
+	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(CUSTOM_SERVICES)
+	@echo "Pulling and pushing third-party services with original versions..."
+	@failed_services="" ; \
+	for img in "$(JAEGERTRACING_IMAGE):jaeger" "$(GRAFANA_IMAGE):grafana" "$(COLLECTOR_CONTRIB_IMAGE):otel-collector" "$(PROMETHEUS_IMAGE):prometheus" "$(OPENSEARCH_IMAGE):opensearch" "$(FLAGD_IMAGE):flagd" "$(VALKEY_IMAGE):valkey-cart"; do \
+		src=$${img%:*}; \
+		dst=$${img#*:}; \
+		version=$$(echo $$src | cut -d':' -f2); \
+		echo "Processing $$src -> $$dst (version: $$version)"; \
+		if docker pull $$src && \
+		   docker tag $$src ${IMAGE_NAME}/$$dst:$$version && \
+		   docker push ${IMAGE_NAME}/$$dst:$$version; then \
+			echo "Successfully processed $$dst"; \
+		else \
+			echo "Failed to process $$dst" >&2; \
+			failed_services="$$failed_services $$dst"; \
+		fi; \
+	done; \
+	if [ -n "$$failed_services" ]; then \
+		echo "The following services failed to process:$$failed_services" >&2; \
+		echo "You can retry these services individually using:"; \
+		for service in $$failed_services; do \
+			echo "  make build-and-push-third-party service=$$service"; \
+		done; \
+		exit 1; \
+	fi
+
+.PHONY: build-and-push-third-party
+build-and-push-third-party:
+ifndef service
+	@echo "Please specify a service name using service=<name>"
+	@echo "Available services: jaeger grafana otel-collector prometheus opensearch flagd valkey-cart"
+	exit 1
+endif
+	@case "$(service)" in \
+		jaeger) \
+			src="$(JAEGERTRACING_IMAGE)"; \
+			;; \
+		grafana) \
+			src="$(GRAFANA_IMAGE)"; \
+			;; \
+		otel-collector) \
+			src="$(COLLECTOR_CONTRIB_IMAGE)"; \
+			;; \
+		prometheus) \
+			src="$(PROMETHEUS_IMAGE)"; \
+			;; \
+		opensearch) \
+			src="$(OPENSEARCH_IMAGE)"; \
+			;; \
+		flagd) \
+			src="$(FLAGD_IMAGE)"; \
+			;; \
+		valkey-cart) \
+			src="$(VALKEY_IMAGE)"; \
+			;; \
+		*) \
+			echo "Unknown service: $(service)"; \
+			echo "Available services: jaeger grafana otel-collector prometheus opensearch flagd valkey-cart"; \
+			exit 1; \
+			;; \
+	esac; \
+	echo "Processing $$src -> $(service)"; \
+	if docker pull $$src && \
+	   docker tag $$src ${IMAGE_NAME}/$(service):$$(echo $$src | cut -d':' -f2) && \
+	   docker push ${IMAGE_NAME}/$(service):$$(echo $$src | cut -d':' -f2); then \
+		echo "Successfully processed $(service)"; \
+	else \
+		echo "Failed to process $(service)" >&2; \
+		exit 1; \
+	fi
 
 # Create multiplatform builder for buildx
 .PHONY: create-multiplatform-builder
