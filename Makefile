@@ -105,8 +105,15 @@ build-and-push:
 	$(DOCKER_COMPOSE_CMD) $(DOCKER_COMPOSE_ENV) push $(CUSTOM_SERVICES)
 	@echo "Pulling and pushing third-party services with original versions..."
 	@set -a; \
+	PIPELINE_IMAGE_NAME="$$IMAGE_NAME"; \
 	[ -f .env ] && . ./.env; \
 	[ -f .env.override ] && . ./.env.override; \
+	if [ -n "$$PIPELINE_IMAGE_NAME" ]; then \
+		export IMAGE_NAME="$$PIPELINE_IMAGE_NAME"; \
+		echo "Using pipeline IMAGE_NAME: $$IMAGE_NAME"; \
+	else \
+		echo "Using default IMAGE_NAME: $$IMAGE_NAME"; \
+	fi; \
 	set +a; \
 	failed_services=""; \
 	\
@@ -114,10 +121,13 @@ build-and-push:
 	if [ -n "$$JAEGERTRACING_IMAGE" ]; then \
 		version=$$(echo $$JAEGERTRACING_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$JAEGERTRACING_IMAGE && \
-		   docker tag $$JAEGERTRACING_IMAGE $$IMAGE_NAME:$$tag_version-jaeger && \
-		   docker push $$IMAGE_NAME:$$tag_version-jaeger; then \
-			echo "Successfully processed jaeger"; \
+		target_image="$$IMAGE_NAME:$$tag_version-jaeger"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing jaeger image from target registry"; \
+		elif docker pull $$JAEGERTRACING_IMAGE && \
+		     docker tag $$JAEGERTRACING_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed jaeger from source"; \
 		else \
 			echo "Failed to process jaeger" >&2; \
 			failed_services="$$failed_services jaeger"; \
@@ -131,10 +141,13 @@ build-and-push:
 	if [ -n "$$GRAFANA_IMAGE" ]; then \
 		version=$$(echo $$GRAFANA_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$GRAFANA_IMAGE && \
-		   docker tag $$GRAFANA_IMAGE $$IMAGE_NAME:$$tag_version-grafana && \
-		   docker push $$IMAGE_NAME:$$tag_version-grafana; then \
-			echo "Successfully processed grafana"; \
+		target_image="$$IMAGE_NAME:$$tag_version-grafana"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing grafana image from target registry"; \
+		elif docker pull $$GRAFANA_IMAGE && \
+		     docker tag $$GRAFANA_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed grafana from source"; \
 		else \
 			echo "Failed to process grafana" >&2; \
 			failed_services="$$failed_services grafana"; \
@@ -148,10 +161,13 @@ build-and-push:
 	if [ -n "$$COLLECTOR_CONTRIB_IMAGE" ]; then \
 		version=$$(echo $$COLLECTOR_CONTRIB_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$COLLECTOR_CONTRIB_IMAGE && \
-		   docker tag $$COLLECTOR_CONTRIB_IMAGE $$IMAGE_NAME:$$tag_version-otel-collector && \
-		   docker push $$IMAGE_NAME:$$tag_version-otel-collector; then \
-			echo "Successfully processed otel-collector"; \
+		target_image="$$IMAGE_NAME:$$tag_version-otel-collector"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing otel-collector image from target registry"; \
+		elif docker pull $$COLLECTOR_CONTRIB_IMAGE && \
+		     docker tag $$COLLECTOR_CONTRIB_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed otel-collector from source"; \
 		else \
 			echo "Failed to process otel-collector" >&2; \
 			failed_services="$$failed_services otel-collector"; \
@@ -165,10 +181,13 @@ build-and-push:
 	if [ -n "$$PROMETHEUS_IMAGE" ]; then \
 		version=$$(echo $$PROMETHEUS_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$PROMETHEUS_IMAGE && \
-		   docker tag $$PROMETHEUS_IMAGE $$IMAGE_NAME:$$tag_version-prometheus && \
-		   docker push $$IMAGE_NAME:$$tag_version-prometheus; then \
-			echo "Successfully processed prometheus"; \
+		target_image="$$IMAGE_NAME:$$tag_version-prometheus"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing prometheus image from target registry"; \
+		elif docker pull $$PROMETHEUS_IMAGE && \
+		     docker tag $$PROMETHEUS_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed prometheus from source"; \
 		else \
 			echo "Failed to process prometheus" >&2; \
 			failed_services="$$failed_services prometheus"; \
@@ -182,10 +201,13 @@ build-and-push:
 	if [ -n "$$OPENSEARCH_IMAGE" ]; then \
 		version=$$(echo $$OPENSEARCH_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$OPENSEARCH_IMAGE && \
-		   docker tag $$OPENSEARCH_IMAGE $$IMAGE_NAME:$$tag_version-opensearch && \
-		   docker push $$IMAGE_NAME:$$tag_version-opensearch; then \
-			echo "Successfully processed opensearch"; \
+		target_image="$$IMAGE_NAME:$$tag_version-opensearch"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing opensearch image from target registry"; \
+		elif docker pull $$OPENSEARCH_IMAGE && \
+		     docker tag $$OPENSEARCH_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed opensearch from source"; \
 		else \
 			echo "Failed to process opensearch" >&2; \
 			failed_services="$$failed_services opensearch"; \
@@ -199,10 +221,13 @@ build-and-push:
 	if [ -n "$$FLAGD_IMAGE" ]; then \
 		version=$$(echo $$FLAGD_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$FLAGD_IMAGE && \
-		   docker tag $$FLAGD_IMAGE $$IMAGE_NAME:$$tag_version-flagd && \
-		   docker push $$IMAGE_NAME:$$tag_version-flagd; then \
-			echo "Successfully processed flagd"; \
+		target_image="$$IMAGE_NAME:$$tag_version-flagd"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing flagd image from target registry"; \
+		elif docker pull $$FLAGD_IMAGE && \
+		     docker tag $$FLAGD_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed flagd from source"; \
 		else \
 			echo "Failed to process flagd" >&2; \
 			failed_services="$$failed_services flagd"; \
@@ -216,10 +241,13 @@ build-and-push:
 	if [ -n "$$VALKEY_IMAGE" ]; then \
 		version=$$(echo $$VALKEY_IMAGE | cut -d':' -f2); \
 		case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-		if docker pull $$VALKEY_IMAGE && \
-		   docker tag $$VALKEY_IMAGE $$IMAGE_NAME:$$tag_version-valkey-cart && \
-		   docker push $$IMAGE_NAME:$$tag_version-valkey-cart; then \
-			echo "Successfully processed valkey-cart"; \
+		target_image="$$IMAGE_NAME:$$tag_version-valkey-cart"; \
+		if docker pull $$target_image; then \
+			echo "Successfully pulled existing valkey-cart image from target registry"; \
+		elif docker pull $$VALKEY_IMAGE && \
+		     docker tag $$VALKEY_IMAGE $$target_image && \
+		     docker push $$target_image; then \
+			echo "Successfully processed valkey-cart from source"; \
 		else \
 			echo "Failed to process valkey-cart" >&2; \
 			failed_services="$$failed_services valkey-cart"; \
@@ -246,8 +274,15 @@ ifndef service
 	exit 1
 endif
 	@set -a; \
+	PIPELINE_IMAGE_NAME="$$IMAGE_NAME"; \
 	[ -f .env ] && . ./.env; \
 	[ -f .env.override ] && . ./.env.override; \
+	if [ -n "$$PIPELINE_IMAGE_NAME" ]; then \
+		export IMAGE_NAME="$$PIPELINE_IMAGE_NAME"; \
+		echo "Using pipeline IMAGE_NAME: $$IMAGE_NAME"; \
+	else \
+		echo "Using default IMAGE_NAME: $$IMAGE_NAME"; \
+	fi; \
 	set +a; \
 	case "$(service)" in \
 		jaeger) \
@@ -284,10 +319,13 @@ endif
 	echo "Processing $$src -> $(service)"; \
 	version=$$(echo $$src | cut -d':' -f2); \
 	case "$$version" in v*) tag_version="$$version" ;; *) tag_version="v$$version" ;; esac; \
-	if docker pull $$src && \
-	   docker tag $$src $$IMAGE_NAME:$$tag_version-$(service) && \
-	   docker push $$IMAGE_NAME:$$tag_version-$(service); then \
-		echo "Successfully processed $(service)"; \
+	target_image="$$IMAGE_NAME:$$tag_version-$(service)"; \
+	if docker pull $$target_image; then \
+		echo "Successfully pulled existing $(service) image from target registry"; \
+	elif docker pull $$src && \
+	     docker tag $$src $$target_image && \
+	     docker push $$target_image; then \
+		echo "Successfully processed $(service) from source"; \
 	else \
 		echo "Failed to process $(service)" >&2; \
 		exit 1; \
