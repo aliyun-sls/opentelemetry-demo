@@ -53,7 +53,7 @@ type ReservationResponse struct {
 func NewInventoryServiceClient() *InventoryServiceClient {
 	baseURL := os.Getenv("INVENTORY_ADDR")
 	if baseURL == "" {
-		baseURL = "http://inventory-service:8080"
+		baseURL = "http://inventory:8080"
 	}
 
 	return &InventoryServiceClient{

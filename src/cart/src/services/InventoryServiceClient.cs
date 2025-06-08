@@ -21,7 +21,7 @@ public class InventoryServiceClient
     {
         _httpClient = httpClient;
         _logger = logger;
-        _inventoryServiceUrl = Environment.GetEnvironmentVariable("INVENTORY_ADDR") ?? "http://inventory-service:8080";
+        _inventoryServiceUrl = Environment.GetEnvironmentVariable("INVENTORY_ADDR") ?? "http://inventory:8080";
     }
 
     public async Task<InventoryItemResponse?> GetInventoryAsync(string productId)
