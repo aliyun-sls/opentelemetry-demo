@@ -1,7 +1,7 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-FROM gradle:8.11.1-jdk21 AS builder
+FROM --platform=${BUILDPLATFORM} eclipse-temurin:21-jdk AS builder
 
 WORKDIR /usr/src/app/
 
@@ -17,7 +17,7 @@ RUN gradle bootJar --no-daemon
 
 # -----------------------------------------------------------------------------
 
-FROM openjdk:21-jre
+FROM eclipse-temurin:21-jre
 
 ARG OTEL_JAVA_AGENT_VERSION=2.15.0
 ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v${OTEL_JAVA_AGENT_VERSION}/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
