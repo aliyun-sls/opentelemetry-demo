@@ -101,7 +101,7 @@ services:
       - FLAGD_HOST
       - FLAGD_PORT
       - VALKEY_ADDR
-      - INVENTORY_ADDR=http://inventory-service:${INVENTORY_PORT}
+      - INVENTORY_ADDR=http://inventory:${INVENTORY_PORT}
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=cart
@@ -109,7 +109,7 @@ services:
     depends_on:
       valkey-cart:
         condition: service_started
-      inventory-service:
+      inventory:
         condition: service_healthy
       otel-collector:
         condition: service_started
@@ -143,7 +143,7 @@ services:
       - PAYMENT_ADDR
       - PRODUCT_CATALOG_ADDR
       - SHIPPING_ADDR
-      - INVENTORY_ADDR=http://inventory-service:${INVENTORY_PORT}
+      - INVENTORY_ADDR=http://inventory:${INVENTORY_PORT}
       - KAFKA_ADDR
       - GOMEMLIMIT=16MiB
       - OTEL_EXPORTER_OTLP_ENDPOINT
@@ -163,7 +163,7 @@ services:
         condition: service_started
       shipping:
         condition: service_started
-      inventory-service:
+      inventory:
         condition: service_healthy
       otel-collector:
         condition: service_started
