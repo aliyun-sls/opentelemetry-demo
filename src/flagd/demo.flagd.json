@@ -105,6 +105,62 @@
         "off": 0
       },
       "defaultVariant": "off"
+    },
+    "inventoryServiceFailure": {
+      "description": "Enable failure injection in inventory service",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "off"
+    },
+    "inventoryServiceLatency": {
+      "description": "Add latency to inventory service operations",
+      "state": "ENABLED",
+      "variants": {
+        "high": 5000,
+        "medium": 2000,
+        "low": 500,
+        "off": 0
+      },
+      "defaultVariant": "off"
+    },
+    "inventoryDatabaseFailure": {
+      "description": "Simulate database connection failures in inventory service",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "off"
+    },
+    "inventorySlowQuery": {
+      "description": "Simulate slow database queries in inventory service",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "off"
+    },
+    "inventoryMemoryLeak": {
+      "description": "Simulate memory leak in inventory service",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "off"
+    },
+    "inventoryHighCpu": {
+      "description": "Simulate high CPU usage in inventory service",
+      "state": "ENABLED",
+      "variants": {
+        "on": true,
+        "off": false
+      },
+      "defaultVariant": "off"
     }
   }
 }

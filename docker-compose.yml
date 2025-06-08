@@ -101,6 +101,7 @@ services:
       - FLAGD_HOST
       - FLAGD_PORT
       - VALKEY_ADDR
+      - INVENTORY_ADDR=http://inventory-service:${INVENTORY_PORT}
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=cart
@@ -108,6 +109,8 @@ services:
     depends_on:
       valkey-cart:
         condition: service_started
+      inventory-service:
+        condition: service_healthy
       otel-collector:
         condition: service_started
       flagd:
@@ -140,6 +143,7 @@ services:
       - PAYMENT_ADDR
       - PRODUCT_CATALOG_ADDR
       - SHIPPING_ADDR
+      - INVENTORY_ADDR=http://inventory-service:${INVENTORY_PORT}
       - KAFKA_ADDR
       - GOMEMLIMIT=16MiB
       - OTEL_EXPORTER_OTLP_ENDPOINT
@@ -159,6 +163,8 @@ services:
         condition: service_started
       shipping:
         condition: service_started
+      inventory-service:
+        condition: service_healthy
       otel-collector:
         condition: service_started
       kafka:
@@ -692,6 +698,73 @@ services:
       - "${VALKEY_PORT}"
     logging: *logging
 
+  # Inventory Service
+  inventory:
+    image: ${IMAGE_NAME}:${DEMO_VERSION}-inventory
+    container_name: inventory
+    build:
+      context: ./
+      dockerfile: ${INVENTORY_DOCKERFILE}
+      cache_from:
+        - ${IMAGE_NAME}:${IMAGE_VERSION}-inventory
+      args:
+        OTEL_JAVA_AGENT_VERSION: ${OTEL_JAVA_AGENT_VERSION}
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    restart: unless-stopped
+    ports:
+      - "${INVENTORY_PORT}"
+    environment:
+      - INVENTORY_PORT
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=inventory
+      - MYSQL_USER=inventory
+      - MYSQL_PASSWORD=inventory
+      - FLAGD_HOST
+      - FLAGD_PORT
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
+      - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+      - OTEL_RESOURCE_ATTRIBUTES
+      - OTEL_SERVICE_NAME=inventory
+      # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
+      - _JAVA_OPTIONS
+    depends_on:
+      mysql:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+      flagd:
+        condition: service_started
+    logging: *logging
+
+  # MySQL used by Inventory service
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.0}
+    container_name: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=inventory
+      - MYSQL_USER=inventory
+      - MYSQL_PASSWORD=inventory
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    restart: unless-stopped
+    ports:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "inventory", "-pinventory"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
 
   # ********************
   # Telemetry Components
@@ -829,3 +902,6 @@ services:
       timeout: 10s
       retries: 10
     logging: *logging
+
+volumes:
+  mysql_data:

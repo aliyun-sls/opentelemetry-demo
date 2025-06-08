@@ -45,11 +45,16 @@ builder.Services.AddOpenFeature(openFeatureBuilder =>
         .AddProvider(_ => new FlagdProvider());
 });
 
+// 注册HttpClient和InventoryServiceClient
+builder.Services.AddHttpClient<InventoryServiceClient>();
+
 builder.Services.AddSingleton(x =>
     new CartService(
         x.GetRequiredService<ICartStore>(),
         new ValkeyCartStore(x.GetRequiredService<ILogger<ValkeyCartStore>>(), "badhost:1234"),
-        x.GetRequiredService<IFeatureClient>()
+        x.GetRequiredService<IFeatureClient>(),
+        x.GetRequiredService<InventoryServiceClient>(),
+        x.GetRequiredService<ILogger<CartService>>()
 ));
 
 

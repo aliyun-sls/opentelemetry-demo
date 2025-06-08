@@ -135,6 +135,7 @@ type checkout struct {
 	currencySvcClient       pb.CurrencyServiceClient
 	emailSvcClient          pb.EmailServiceClient
 	paymentSvcClient        pb.PaymentServiceClient
+	inventoryServiceClient  *InventoryServiceClient
 }
 
 func main() {
@@ -198,6 +199,9 @@ func main() {
 	defer c.Close()
 
 	svc.kafkaBrokerSvcAddr = os.Getenv("KAFKA_ADDR")
+
+	// 初始化库存服务客户端
+	svc.inventoryServiceClient = NewInventoryServiceClient()
 
 	if svc.kafkaBrokerSvcAddr != "" {
 		svc.KafkaProducerClient, err = kafka.CreateKafkaProducer([]string{svc.kafkaBrokerSvcAddr}, log)
@@ -265,6 +269,17 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 	}
 	span.AddEvent("prepared")
 
+	// 检查库存可用性并预留库存
+	reservationID := fmt.Sprintf("order_%s", orderID.String())
+	inventoryReserved, err := cs.checkAndReserveInventory(ctx, prep.cartItems, reservationID)
+	if err != nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "库存检查失败: %v", err)
+	}
+	if !inventoryReserved {
+		return nil, status.Errorf(codes.FailedPrecondition, "库存不足，无法完成订单")
+	}
+	span.AddEvent("inventory_reserved", trace.WithAttributes(attribute.String("reservation.id", reservationID)))
+
 	total := &pb.Money{CurrencyCode: req.UserCurrency,
 		Units: 0,
 		Nanos: 0}
@@ -276,6 +291,10 @@ func (cs *checkout) PlaceOrder(ctx context.Context, req *pb.PlaceOrderRequest) (
 
 	txID, err := cs.chargeCard(ctx, total, req.CreditCard)
 	if err != nil {
+		// 支付失败，释放库存预留
+		if releaseErr := cs.releaseInventoryReservation(ctx, reservationID); releaseErr != nil {
+			log.Warnf("支付失败后释放库存预留失败: %v", releaseErr)
+		}
 		return nil, status.Errorf(codes.Internal, "failed to charge card: %+v", err)
 	}
 	log.Infof("payment went through (transaction_id: %s)", txID)
@@ -608,4 +627,90 @@ func (cs *checkout) getIntFeatureFlag(ctx context.Context, featureFlagName strin
 	)
 
 	return int(featureFlagValue)
+}
+
+// checkAndReserveInventory 检查库存可用性并预留库存
+func (cs *checkout) checkAndReserveInventory(ctx context.Context, cartItems []*pb.CartItem, reservationID string) (bool, error) {
+	ctx, span := tracer.Start(ctx, "checkAndReserveInventory")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("reservation.id", reservationID),
+		attribute.Int("cart.items.count", len(cartItems)),
+	)
+
+	// 1. 转换购物车商品格式
+	inventoryItems := make([]CartItemForInventory, len(cartItems))
+	for i, item := range cartItems {
+		inventoryItems[i] = CartItemForInventory{
+			ProductID: item.ProductId,
+			Quantity:  item.Quantity,
+		}
+	}
+
+	// 2. 检查库存可用性
+	availability, err := cs.inventoryServiceClient.CheckAvailability(ctx, inventoryItems)
+	if err != nil {
+		log.Errorf("检查库存可用性失败: %v", err)
+		span.SetAttributes(attribute.String("error", err.Error()))
+		return false, fmt.Errorf("检查库存可用性失败: %w", err)
+	}
+
+	// 3. 检查是否所有商品都可用
+	allAvailable := true
+	for productID, available := range availability {
+		if !available {
+			log.Warnf("商品 %s 库存不足", productID)
+			allAvailable = false
+		}
+	}
+
+	if !allAvailable {
+		log.Warnf("订单中有商品库存不足，无法预留库存")
+		span.SetAttributes(attribute.Bool("inventory.all_available", false))
+		return false, nil
+	}
+
+	// 4. 预留库存
+	success, err := cs.inventoryServiceClient.ReserveInventory(ctx, inventoryItems, reservationID)
+	if err != nil {
+		log.Errorf("预留库存失败: %v", err)
+		span.SetAttributes(attribute.String("error", err.Error()))
+		return false, fmt.Errorf("预留库存失败: %w", err)
+	}
+
+	if !success {
+		log.Warnf("库存预留失败，预留ID: %s", reservationID)
+		span.SetAttributes(attribute.Bool("inventory.reservation.success", false))
+		return false, nil
+	}
+
+	log.Infof("库存预留成功，预留ID: %s", reservationID)
+	span.SetAttributes(attribute.Bool("inventory.reservation.success", true))
+	return true, nil
+}
+
+// releaseInventoryReservation 释放库存预留
+func (cs *checkout) releaseInventoryReservation(ctx context.Context, reservationID string) error {
+	ctx, span := tracer.Start(ctx, "releaseInventoryReservation")
+	defer span.End()
+
+	span.SetAttributes(attribute.String("reservation.id", reservationID))
+
+	success, err := cs.inventoryServiceClient.ReleaseInventory(ctx, reservationID)
+	if err != nil {
+		log.Errorf("释放库存预留失败: %v", err)
+		span.SetAttributes(attribute.String("error", err.Error()))
+		return fmt.Errorf("释放库存预留失败: %w", err)
+	}
+
+	if !success {
+		log.Warnf("库存预留释放失败，预留ID: %s", reservationID)
+		span.SetAttributes(attribute.Bool("inventory.release.success", false))
+		return fmt.Errorf("库存预留释放失败")
+	}
+
+	log.Infof("库存预留释放成功，预留ID: %s", reservationID)
+	span.SetAttributes(attribute.Bool("inventory.release.success", true))
+	return nil
 }
